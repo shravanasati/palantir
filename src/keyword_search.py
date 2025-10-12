@@ -1,6 +1,7 @@
 from src.load_dataset import get_stopwords, load_data
-import string
 
+from nltk import word_tokenize
+from nltk.stem import PorterStemmer
 
 STOPWORDS = set(get_stopwords())
 
@@ -12,12 +13,9 @@ def preprocess_text(query: str) -> list[str]:
     """
     query = query.lower()
 
-    # remove punctuation
-    ptt = str.maketrans({k: "" for k in string.punctuation})
-    query = query.translate(ptt)
-
-    # tokenize and remove stopwords
-    query_tokens = [q for q in query.split() if q and q not in STOPWORDS]
+    stemmer = PorterStemmer()
+    # tokenize, remove stopwords and stemming
+    query_tokens = [stemmer.stem(q) for q in word_tokenize(query) if q and q not in STOPWORDS]
 
     return query_tokens
 
