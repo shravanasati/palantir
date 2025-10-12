@@ -20,6 +20,21 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
 
+    idf_parser = subparsers.add_parser("idf", help="Calculate the IDF score of a term")
+    idf_parser.add_argument("term", type=str, help="Term")
+
+    tf_parser = subparsers.add_parser(
+        "tf", help="Get term frequencies for a term in a document"
+    )
+    tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term")
+
+    tfidf_parser = subparsers.add_parser(
+        "tfidf", help="Get the TF-IDF for a term in a document"
+    )
+    tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tfidf_parser.add_argument("term", type=str, help="Term")
+
     subparsers.add_parser("build", help="Build the inverted index")
 
     args = parser.parse_args()
@@ -45,6 +60,40 @@ def main() -> None:
             result = ii.get_documents("merida")
             if len(result) > 0:
                 print("first document ID matching merida", result[0]["id"])
+
+        case "tf":
+            try:
+                ii = InvertedIndex.from_cache()
+            except FileNotFoundError:
+                print("index doesn't exist, run build command first")
+                exit(1)
+
+            print(ii.get_tf(args.doc_id, args.term))
+
+        case "idf":
+            try:
+                ii = InvertedIndex.from_cache()
+            except FileNotFoundError:
+                print("index doesn't exist, run build command first")
+                exit(1)
+
+            idf = ii.get_idf(args.term)
+            print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+
+        case "tfidf":
+            try:
+                ii = InvertedIndex.from_cache()
+            except FileNotFoundError:
+                print("index doesn't exist, run build command first")
+                exit(1)
+
+            tf = ii.get_tf(args.doc_id, args.term)
+            idf = ii.get_idf(args.term)
+            tf_idf = tf * idf
+            print(
+                f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
+            )
+
         case _:
             parser.print_help()
 
