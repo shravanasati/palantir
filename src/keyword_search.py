@@ -78,6 +78,9 @@ class InvertedIndex:
         term_doc_count = sum((bool(self.get_tf(i, term)) for i in self.docmap))
         return math.log((N + 1) / (term_doc_count + 1))
 
+    def get_tfidf(self, doc_id: int, term: str):
+        return self.get_tf(doc_id, term) * self.get_idf(term)
+
     def save(self):
         index_file, docmap_file, tf_file = self.get_cache_paths()
         with open(index_file, "wb") as f:
@@ -101,7 +104,7 @@ class InvertedIndex:
 
         else:
             raise FileNotFoundError(
-                "cache/index.pkl or cache/docmap.pkl files don't exist"
+                "cache/index.pkl or cache/docmap.pkl or cache/term_frequencies.pkl files don't exist"
             )
 
         return ii

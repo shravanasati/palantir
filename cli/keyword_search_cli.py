@@ -87,9 +87,7 @@ def main() -> None:
                 print("index doesn't exist, run build command first")
                 exit(1)
 
-            tf = ii.get_tf(args.doc_id, args.term)
-            idf = ii.get_idf(args.term)
-            tf_idf = tf * idf
+            tf_idf = ii.get_tfidf(args.doc_id, args.term)
             print(
                 f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
             )
