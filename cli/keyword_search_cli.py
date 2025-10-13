@@ -50,8 +50,8 @@ def main() -> None:
             # for i, result in enumerate(search_keyword(args.query)):
             for i, result in enumerate(ii.get_documents(args.query)):
                 print(f"{i+1}. {result['title']}")
-                if i == 4:
-                    break
+                # if i == 4:
+                #     break
 
         case "build":
             ii = InvertedIndex()

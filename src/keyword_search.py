@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+from functools import cache
 import math
 from pathlib import Path
 import pickle
@@ -59,9 +60,15 @@ class InvertedIndex:
 
     def get_documents(self, query: str):
         query_tokens = preprocess_text(query)
-        doc_ids = sorted([i for qtok in query_tokens for i in self.index.get(qtok, [])])
-        return [self.docmap[i] for i in doc_ids]
+        doc_ids = set(sorted(
+            [(i, qtok) for qtok in query_tokens for i in self.index.get(qtok, [])],
+            # key=lambda r: self.get_tfidf(*r),
+            # reverse=True
+        ))
 
+        return [self.docmap[i] for i, _ in doc_ids]
+
+    @cache
     def get_tf(self, doc_id: int, term: str):
         query_tokens = preprocess_text(term)
         if len(query_tokens) > 1 or len(query_tokens) == 0:
@@ -71,6 +78,7 @@ class InvertedIndex:
         tf_counter = self.term_frequencies[doc_id]
         return tf_counter.get(query_tokens[0], 0)
 
+    @cache
     def get_idf(self, term: str):
         N = len(self.docmap)
         # this is the number of documents term appears in, not total number
