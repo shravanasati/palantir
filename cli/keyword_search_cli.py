@@ -9,7 +9,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import after path is set
-from src.keyword_search import BM25_B, BM25_K1, InvertedIndex  # , search_keyword
+from src.keyword_search import BM25_B, BM25_K1, InvertedIndex  # , search_keyword  # noqa: E402
 
 
 def main() -> None:
