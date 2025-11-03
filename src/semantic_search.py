@@ -5,6 +5,21 @@ from sentence_transformers import SentenceTransformer
 from src.load_dataset import Movie, load_data
 
 
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
+
+class SemanticSearchResult(Movie):
+    score: float
+
+
 class SemanticSearch:
     def __init__(self):
         # Load the model (downloads automatically the first time)
@@ -69,11 +84,30 @@ class SemanticSearch:
 
         return ss
 
+    def search(self, query: str, limit: int) -> list[SemanticSearchResult]:
+        if len(self.embeddings) == 0:
+            raise ValueError(
+                "No embeddings loaded. Call `load_or_create_embeddings` first."
+            )
+
+        query_embed = self.generate_embedding(query)
+        # document, similarity_score
+        results: list[tuple[int, float]] = []
+        for i, e in enumerate(self.embeddings):
+            results.append((i + 1, cosine_similarity(query_embed, e)))
+
+        results.sort(key=lambda x: x[1], reverse=True)
+        return [
+            SemanticSearchResult(self.document_map[i] | {"score": s})  # type: ignore
+            for i, s in results[:limit]
+        ]
+
 
 def verify_model():
     ss = SemanticSearch()
     print(f"Model loaded: {ss.model}")
     print(f"Max sequence length: {ss.model.max_seq_length}")
+
 
 def verify_embeddings():
     ss = SemanticSearch.load_or_create_embeddings(load_data())
@@ -81,6 +115,7 @@ def verify_embeddings():
     print(
         f"Embeddings shape: {ss.embeddings.shape[0]} vectors in {ss.embeddings.shape[1]} dimensions"
     )
+
 
 def embed_text(text: str):
     embedding = SemanticSearch().generate_embedding(text)
