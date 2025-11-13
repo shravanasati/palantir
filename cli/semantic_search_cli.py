@@ -11,6 +11,7 @@ sys.path.insert(0, str(project_root))
 from src.load_dataset import load_data
 from src.semantic_search import (
     SemanticSearch,
+    fixed_size_chunk_text,
     embed_text,
     verify_embeddings,
     verify_model,
@@ -29,6 +30,19 @@ def main():
 
     embed_parser = subparsers.add_parser("embed", help="Generate a text embedding")
     embed_parser.add_argument("text", type=str, help="The text to embed.")
+
+    chunk_parser = subparsers.add_parser("chunk", help="Chunk the given text.")
+    chunk_parser.add_argument("text", type=str, help="The text to chunk.")
+    chunk_parser.add_argument(
+        "--chunk-size", type=int, default=200, nargs="?", help="Chunk size"
+    )
+    chunk_parser.add_argument(
+        "--overlap",
+        type=int,
+        default=-1,
+        nargs="?",
+        help="Overlap (default 20% of chunk size)",
+    )
 
     search_parser = subparsers.add_parser(
         "search", help="Search movies using semantic search"
@@ -57,6 +71,16 @@ def main():
                     f"{i + 1}. ({movie['id']}) {movie['title']} - Score: {movie['score']:.4f}"
                 )
                 print(movie["description"], "\n")
+
+        case "chunk":
+            overlap = args.overlap
+            if overlap == -1:
+                overlap = round(0.2 * args.chunk_size)
+            else:
+                overlap = max(0, overlap)
+            chunks = fixed_size_chunk_text(args.text, args.chunk_size, overlap)
+            for i, chunk in enumerate(chunks):
+                print(f"{i + 1}. {chunk}")
 
         case _:
             parser.print_help()

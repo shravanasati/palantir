@@ -5,6 +5,21 @@ from sentence_transformers import SentenceTransformer
 from src.load_dataset import Movie, load_data
 
 
+def fixed_size_chunk_text(text: str, chunk_size: int = 200, overlap: int = 0):
+    words = text.split()
+    chunks: list[str] = []
+    for i in range(0, len(words), chunk_size):
+        chunk_words = []
+        if i > 0:
+            chunk_words.extend(words[i - overlap : i])
+        chunk_words.extend(words[i : i + chunk_size])
+        chunks.append(" ".join(chunk_words))
+
+    return chunks
+
+    
+
+
 def cosine_similarity(vec1, vec2):
     dot_product = np.dot(vec1, vec2)
     norm1 = np.linalg.norm(vec1)
