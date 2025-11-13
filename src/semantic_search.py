@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -8,16 +9,37 @@ from src.load_dataset import Movie, load_data
 def fixed_size_chunk_text(text: str, chunk_size: int = 200, overlap: int = 0):
     words = text.split()
     chunks: list[str] = []
-    for i in range(0, len(words), chunk_size):
-        chunk_words = []
-        if i > 0:
-            chunk_words.extend(words[i - overlap : i])
-        chunk_words.extend(words[i : i + chunk_size])
-        chunks.append(" ".join(chunk_words))
+    i = 0
+    while i < len(words):
+        skip = 0
+        current_chunk = []
+        current_chunk.extend(words[max(i - overlap, 0) : i])
+        skip = len(current_chunk)
+        rem = chunk_size - skip
+        current_chunk.extend(words[i : i + rem])
+
+        chunks.append(" ".join(current_chunk))
+        i += rem
 
     return chunks
 
-    
+
+def semantic_chunk_text(text: str, max_chunk_size: int = 4, overlap: int = 0):
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    chunks: list[str] = []
+    i = 0
+    while i < len(sentences):
+        skip = 0
+        current_chunk = []
+        current_chunk.extend(sentences[max(i - overlap, 0) : i])
+        skip = len(current_chunk)
+        rem = max_chunk_size - skip
+        current_chunk.extend(sentences[i : i + rem])
+
+        chunks.append(" ".join(current_chunk))
+        i += rem
+
+    return chunks
 
 
 def cosine_similarity(vec1, vec2):
