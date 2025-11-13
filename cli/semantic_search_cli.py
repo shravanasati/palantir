@@ -10,6 +10,7 @@ sys.path.insert(0, str(project_root))
 
 from src.load_dataset import load_data
 from src.semantic_search import (
+    ChunkedSemanticSearch,
     SemanticSearch,
     fixed_size_chunk_text,
     embed_text,
@@ -27,6 +28,9 @@ def main():
     subparsers.add_parser("verify", help="Verify if the model is loaded.")
     subparsers.add_parser(
         "verify_embeddings", help="Verify if the embeddings are created."
+    )
+    subparsers.add_parser(
+        "embed_chunks", help="Generate chunked embeddings for all documents."
     )
 
     embed_parser = subparsers.add_parser("embed", help="Generate a text embedding")
@@ -66,6 +70,14 @@ def main():
         "limit", type=int, default=5, nargs="?", help="Number of search items"
     )
 
+    chunked_search_parser = subparsers.add_parser(
+        "search_chunked", help="Search movies using chunked semantic search"
+    )
+    chunked_search_parser.add_argument("query", type=str, help="Search query")
+    chunked_search_parser.add_argument(
+        "limit", type=int, default=5, nargs="?", help="Number of search items"
+    )
+
     args = parser.parse_args()
     match args.command:
         case "verify":
@@ -101,6 +113,19 @@ def main():
             chunks = semantic_chunk_text(args.text, args.max_chunk_size, args.overlap)
             for i, chunk in enumerate(chunks):
                 print(f"{i + 1}. {chunk}")
+        
+        case "embed_chunks":
+            css = ChunkedSemanticSearch.load_or_create_embeddings(load_data())
+            print(f"Generated {len(css.chunk_embeddings)} chunked embeddings")
+
+        case "search_chunked":
+            ss = ChunkedSemanticSearch.load_or_create_embeddings(load_data())
+            results = ss.search_chunks(args.query, args.limit)
+            for i, movie in enumerate(results):
+                print(
+                    f"{i + 1}. ({movie['id']}) {movie['title']} - Score: {movie['score']:.4f}"
+                )
+                print(movie["description"], "\n")
 
         case _:
             parser.print_help()
