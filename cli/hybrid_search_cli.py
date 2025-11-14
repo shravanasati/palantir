@@ -1,6 +1,7 @@
 import argparse
 import sys
 from pathlib import Path
+import time
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -26,6 +27,17 @@ def main() -> None:
         "--alpha", type=float, default=0.5, nargs="?", help="Weightage for keyword search"
     )
 
+    rrf_search_parser = subparsers.add_parser(
+        "rrf_search", help="Search movies using RRF search"
+    )
+    rrf_search_parser.add_argument("query", type=str, help="Search query")
+    rrf_search_parser.add_argument(
+        "--limit", type=int, default=5, nargs="?", help="Number of search items"
+    )
+    rrf_search_parser.add_argument(
+        "--k", type=int, default=60, nargs="?", help="K parameter for RRF"
+    )
+
     args = parser.parse_args()
     match args.command:
         case "weighted_search":
@@ -36,6 +48,20 @@ def main() -> None:
                     f"{i + 1}. ({movie['id']}) {movie['title']} - Score: {movie['score']:.4f}"
                 )
                 print(movie["description"][:100], "\n")
+        case "rrf_search":
+            init = time.perf_counter()
+            hs = HybridSearch(load_data())
+            search_start = time.perf_counter()
+            results = hs.rrf_search(args.query, args.k, args.limit)
+            search_end = time.perf_counter()
+            for i, movie in enumerate(results):
+                print(
+                    f"{i + 1}. ({movie['id']}) {movie['title']} - Score: {movie['score']:.4f}"
+                )
+                print(movie["description"][:100], "\n")
+            end = time.perf_counter()
+            print(search_end - search_start)
+            print(end - init)
         case _:
             parser.print_help()
 

@@ -13,6 +13,10 @@ def min_max_normalize(l: Collection[int | float]):
     return [(i - min_) / (max_ - min_) for i in l]
 
 
+def rrf_score(rank: int, k: int = 60):
+    return 1 / (k + rank)
+
+
 class HybridSearch:
     def __init__(self, documents: list[Movie]):
         self.documents = documents
@@ -38,9 +42,38 @@ class HybridSearch:
     def hybrid_score(bm25_score: float, semantic_score: float, alpha: float = 0.5):
         return alpha * bm25_score + (1 - alpha) * semantic_score
 
-    def weighted_search(
-        self, query: str, alpha: float = 0.5, limit: int = 5
-    ) -> list[ScoredMovie]:
+    def rrf_search(self, query: str, k: int, limit: int = 5) -> list[ScoredMovie]:
+        bm25_results = self._bm25_search(query, limit * 500)
+        semantic_results = self._semantic_search(query, limit * 500)
+
+        # map document IDs to their scores
+        bm25_result_map: dict[int, float] = {}
+        for i, r in enumerate(bm25_results):
+            bm25_result_map[r["id"]] = rrf_score(i + 1)
+
+        semantic_result_map: dict[int, float] = {}
+        for i, r in enumerate(semantic_results):
+            semantic_result_map[r["id"]] = rrf_score(i + 1)
+
+        unique_doc_ids = set(bm25_result_map.keys())
+        unique_doc_ids = unique_doc_ids.union(semantic_result_map.keys())
+
+        doc_hybrid_scores: dict[int, float] = {}
+        for doc_id in unique_doc_ids:
+            doc_hybrid_scores[doc_id] = bm25_result_map.get(
+                doc_id, 0
+            ) + semantic_result_map.get(doc_id, 0)
+
+        doc_hybrid_scores_sorted = sorted(
+            doc_hybrid_scores.items(), key=lambda x: x[1], reverse=True
+        )[:limit]
+
+        return [
+            ScoredMovie(self.document_map[d] | {"score": s})
+            for d, s in doc_hybrid_scores_sorted
+        ]
+
+    def weighted_search(self, query: str, alpha: float, limit: int = 10):
         bm25_results = self._bm25_search(query, limit * 500)
         semantic_results = self._semantic_search(query, limit * 500)
 
@@ -74,6 +107,3 @@ class HybridSearch:
             ScoredMovie(self.document_map[d] | {"score": s})
             for d, s in doc_hybrid_scores_sorted
         ]
-
-    def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
