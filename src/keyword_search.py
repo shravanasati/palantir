@@ -3,7 +3,7 @@ from functools import cache
 import math
 from pathlib import Path
 import pickle
-from src.load_dataset import get_stopwords, load_data, Movie
+from src.load_dataset import ScoredMovie, get_stopwords, load_data, Movie
 
 from nltk import word_tokenize
 from nltk.stem import PorterStemmer
@@ -12,9 +12,6 @@ STOPWORDS = set(get_stopwords())
 BM25_K1 = 1.5
 BM25_B = 0.75
 
-
-class BM25SearchResult(Movie):
-    score: float
 
 
 def preprocess_text(query: str) -> list[str]:
@@ -127,7 +124,7 @@ class InvertedIndex:
     def bm25(self, doc_id: int, term: str):
         return self.get_bm25_tf(doc_id, term) * self.get_bm25_idf(term)
 
-    def bm25_search(self, query: str, limit: int) -> list[BM25SearchResult]:
+    def bm25_search(self, query: str, limit: int) -> list[ScoredMovie]:
         query_tokens = preprocess_text(query)
         scores: dict[int, float] = {}
         for doc_id in self.docmap:
@@ -137,7 +134,7 @@ class InvertedIndex:
 
         sorted_doc_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return [
-            BM25SearchResult(self.docmap[i] | {"score": score})  # type: ignore
+            ScoredMovie(self.docmap[i] | {"score": score})  # type: ignore
             for i, score in sorted_doc_scores[:limit]
         ]
 

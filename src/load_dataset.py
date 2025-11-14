@@ -13,6 +13,10 @@ class Movie(TypedDict):
     description: str
 
 
+class ScoredMovie(Movie):
+    score: float
+
+
 def load_data() -> list[Movie]:
     with open(str(MOVIES_DATA_PATH.absolute())) as f:
         return json.load(f)["movies"]

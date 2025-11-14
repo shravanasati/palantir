@@ -5,7 +5,7 @@ from typing import TypedDict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from src.load_dataset import Movie, load_data
+from src.load_dataset import Movie, ScoredMovie, load_data
 
 
 def fixed_size_chunk_text(text: str, chunk_size: int = 200, overlap: int = 0):
@@ -74,10 +74,6 @@ class ChunkMetadataScored(ChunkMetadata):
     score: float
 
 
-class SemanticSearchResult(Movie):
-    score: float
-
-
 class SemanticSearch:
     def __init__(self, model_name="all-MiniLM-L6-v2"):
         # Load the model (downloads automatically the first time)
@@ -140,7 +136,7 @@ class SemanticSearch:
 
         return ss
 
-    def search(self, query: str, limit: int) -> list[SemanticSearchResult]:
+    def search(self, query: str, limit: int) -> list[ScoredMovie]:
         if len(self.embeddings) == 0:
             raise ValueError(
                 "No embeddings loaded. Call `load_or_create_embeddings` first."
@@ -154,7 +150,7 @@ class SemanticSearch:
 
         results.sort(key=lambda x: x[1], reverse=True)
         return [
-            SemanticSearchResult(self.document_map[i] | {"score": s})  # type: ignore
+            ScoredMovie(self.document_map[i] | {"score": s})  # type: ignore
             for i, s in results[:limit]
         ]
 
@@ -187,7 +183,7 @@ class ChunkedSemanticSearch(SemanticSearch):
             chunks.extend(desc_chunks)
             for ci, c in enumerate(desc_chunks):
                 chunk_metadatas.append(
-                    {"movie_idx": i, "chunk_idx": ci, "total_chunks": len(desc_chunks)}
+                    {"movie_idx": i+1, "chunk_idx": ci, "total_chunks": len(desc_chunks)}
                 )
 
         self.chunk_embeddings = self.model.encode(chunks, show_progress_bar=True)
@@ -242,17 +238,8 @@ class ChunkedSemanticSearch(SemanticSearch):
             doc_scores[cs["movie_idx"]] = curr_score
 
         results = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)[:limit]
-        final_results = []
-        for i, s in results:
-            movie: SemanticSearchResult = self.document_map[i]  # type: ignore
-            desc = movie.get("description", "") or ""
-            if len(desc) > 100:
-                desc = desc[:100] + "..."
-            movie["description"] = desc
-            movie["score"] = s
-            final_results.append(SemanticSearchResult(movie))  # type: ignore
 
-        return final_results
+        return [ScoredMovie(self.document_map[i] | {"score": s}) for i, s in results]
 
 
 def verify_model():

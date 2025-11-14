@@ -125,7 +125,7 @@ def main():
                 print(
                     f"{i + 1}. ({movie['id']}) {movie['title']} - Score: {movie['score']:.4f}"
                 )
-                print(movie["description"], "\n")
+                print(movie["description"][:100], "\n")
 
         case _:
             parser.print_help()
