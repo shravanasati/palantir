@@ -13,8 +13,6 @@ from src.load_dataset import ScoredMovie, load_data
 from src.query_enhancer import QueryEnhancer, EnhancementMethod
 
 
-def movie_str_minimal(r: ScoredMovie):
-    return str({"id": r["id"], "title": r["title"]})
 
 
 def main() -> None:
@@ -86,15 +84,10 @@ def main() -> None:
             results = hs.rrf_search(query, args.k, limit)
             if args.rerank:
                 reranker = Reranker()
-                ranks = reranker.rerank_llm(
-                    query, [movie_str_minimal(r) for r in results]
-                )
-                order_index = {id_: index for index, id_ in enumerate(ranks)}
-                orig_ids = [r["id"] for r in results]
-                results = sorted(
-                    results, key=lambda x: order_index.get(x["id"], float("inf"))
-                )
-                print(f"Reranked {orig_ids} -> {ranks}")
+                # results = reranker.rerank_llm(
+                #     query, results
+                # )
+                results = reranker.rerank_cross_encoder(query, results)
                 results = results[:int(limit / 5)]
 
             for i, movie in enumerate(results):
