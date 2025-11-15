@@ -7,9 +7,14 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 
+from src.reranker import Reranker
 from src.hybrid_search import HybridSearch
-from src.load_dataset import load_data
-from src.query_preprocessing import QueryEnhancer, EnhancementMethod
+from src.load_dataset import ScoredMovie, load_data
+from src.query_enhancer import QueryEnhancer, EnhancementMethod
+
+
+def movie_str_minimal(r: ScoredMovie):
+    return str({"id": r["id"], "title": r["title"]})
 
 
 def main() -> None:
@@ -42,7 +47,16 @@ def main() -> None:
         "--k", type=int, default=60, nargs="?", help="K parameter for RRF"
     )
     rrf_search_parser.add_argument(
-        "--enhance", type=str, choices=[m.value for m in EnhancementMethod], help="Query enhancement method"
+        "--enhance",
+        type=str,
+        choices=[m.value for m in EnhancementMethod],
+        help="Query enhancement method",
+    )
+    rrf_search_parser.add_argument(
+        "--rerank",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to rerank documents.",
     )
 
     args = parser.parse_args()
@@ -64,8 +78,25 @@ def main() -> None:
                 query = qe.enhance(method, query)
                 print(f"Enhanced query ({method.value}): '{args.query}' -> '{query}'\n")
 
+            limit = args.limit
+            if args.rerank:
+                limit *= 5
+
             hs = HybridSearch(load_data())
-            results = hs.rrf_search(query, args.k, args.limit)
+            results = hs.rrf_search(query, args.k, limit)
+            if args.rerank:
+                reranker = Reranker()
+                ranks = reranker.rerank_llm(
+                    query, [movie_str_minimal(r) for r in results]
+                )
+                order_index = {id_: index for index, id_ in enumerate(ranks)}
+                orig_ids = [r["id"] for r in results]
+                results = sorted(
+                    results, key=lambda x: order_index.get(x["id"], float("inf"))
+                )
+                print(f"Reranked {orig_ids} -> {ranks}")
+                results = results[:int(limit / 5)]
+
             for i, movie in enumerate(results):
                 print(
                     f"{i + 1}. ({movie['id']}) {movie['title']} - Score: {movie['score']:.4f}"
