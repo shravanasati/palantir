@@ -94,7 +94,7 @@ def main():
     reranker = Reranker()
 
     def search_with_query_enhancement(query: str, limit: int) -> List[Movie]:
-        enhanced_query = query_enhancer.enhance(EnhancementMethod.MULTI_QUERY, query)
+        enhanced_query = query_enhancer.enhance(EnhancementMethod.REWRITE, query)
         return hybrid_searcher.rrf_search(enhanced_query, 60, limit)
 
     def search_with_reranking(query: str, limit: int) -> List[Movie]:
