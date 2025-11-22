@@ -1,0 +1,56 @@
+name: Evaluation CI
+
+on:
+  push:
+    branches: [ "**" ]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+    
+    - name: Download NLTK data
+      run: |
+        uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+    
+    - name: Create cache directory
+      run: mkdir -p cache
+    
+    - name: Cache embeddings and indexes
+      uses: actions/cache@v4
+      with:
+        path: cache/
+        key: ${{ runner.os }}-palantir-cache-${{ hashFiles('data/movies.json') }}
+        restore-keys: |
+          ${{ runner.os }}-palantir-cache-
+    
+    - name: Run evaluation with k=5
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        echo "Running evaluation with k=5..."
+        uv run python cli/evaluation_cli.py -k 5
+    
+    - name: Run evaluation with k=10
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        echo "Running evaluation with k=10..."
+        uv run python cli/evaluation_cli.py -k 10
