@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Callable, Dict, List, Set
+from typing import Any, Callable, Dict, List, Set
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -10,7 +10,7 @@ sys.path.insert(0, str(project_root))
 
 from src.hybrid_search import HybridSearch
 from src.keyword_search import InvertedIndex
-from src.load_dataset import Movie, load_data
+from src.load_dataset import Movie, ScoredMovie, load_data
 from src.query_enhancer import EnhancementMethod, QueryEnhancer
 from src.reranker import Reranker
 from src.semantic_search import ChunkedSemanticSearch
@@ -44,7 +44,7 @@ def f1_score_at_k(precision: float, recall: float) -> float:
 
 def evaluate(
     search_fn: Callable[[str, int], List[Movie]],
-    golden_dataset: List[Dict],
+    golden_dataset: dict[str, Any],
     k: int,
 ):
     total_precision = 0
@@ -87,23 +87,28 @@ def main():
     documents = load_data()
 
     # Initialize searchers
-    keyword_searcher = InvertedIndex.from_cache()
+    try:
+        keyword_searcher = InvertedIndex.from_cache()
+    except FileNotFoundError:
+        keyword_searcher = InvertedIndex()
+        keyword_searcher.build()
+        keyword_searcher.save()
     semantic_searcher = ChunkedSemanticSearch.load_or_create_embeddings(documents)
     hybrid_searcher = HybridSearch(documents)
     query_enhancer = QueryEnhancer()
     reranker = Reranker()
 
-    def search_with_query_enhancement(query: str, limit: int) -> List[Movie]:
+    def search_with_query_enhancement(query: str, limit: int) -> List[ScoredMovie]:
         enhanced_query = query_enhancer.enhance(EnhancementMethod.REWRITE, query)
         return hybrid_searcher.rrf_search(enhanced_query, 60, limit)
 
-    def search_with_reranking(query: str, limit: int) -> List[Movie]:
+    def search_with_reranking(query: str, limit: int) -> List[ScoredMovie]:
         # Fetch more results initially for the reranker to work with
         initial_results = hybrid_searcher.rrf_search(query, 60, limit * 5)
         reranked_results = reranker.rerank_cross_encoder(query, initial_results)
         return reranked_results[:limit]
 
-    def search_with_enhancement_and_reranking(query: str, limit: int) -> List[Movie]:
+    def search_with_enhancement_and_reranking(query: str, limit: int) -> List[ScoredMovie]:
         enhanced_query = query_enhancer.enhance(EnhancementMethod.REWRITE, query)
         initial_results = hybrid_searcher.rrf_search(enhanced_query, 60, limit * 5)
         reranked_results = reranker.rerank_cross_encoder(

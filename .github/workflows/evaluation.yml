@@ -30,17 +30,6 @@ jobs:
       run: |
         uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
     
-    - name: Create cache directory
-      run: mkdir -p cache
-    
-    - name: Cache embeddings and indexes
-      uses: actions/cache@v4
-      with:
-        path: cache/
-        key: ${{ runner.os }}-palantir-cache-${{ hashFiles('data/movies.json') }}
-        restore-keys: |
-          ${{ runner.os }}-palantir-cache-
-    
     - name: Run evaluation with k=5
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -54,3 +43,11 @@ jobs:
       run: |
         echo "Running evaluation with k=10..."
         uv run python cli/evaluation_cli.py -k 10
+
+    - name: Cache embeddings and indexes
+      uses: actions/cache@v4
+      with:
+        path: cache/
+        key: ${{ runner.os }}-palantir-cache-${{ hashFiles('data/movies.json') }}
+        restore-keys: |
+          ${{ runner.os }}-palantir-cache-
